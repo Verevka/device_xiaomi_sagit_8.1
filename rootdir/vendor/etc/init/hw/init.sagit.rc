@@ -1,0 +1,186 @@
+# Sagit related stuff
+
+on early-init
+    setprop sys.usb.controller "a800000.dwc3"
+    setprop sys.usb.configfs 1
+
+on init
+    # Disable UFS powersaving
+    write /sys/devices/soc/1da4000.ufshc/clkscale_enable 0
+    write /sys/devices/soc/1da4000.ufshc/clkgate_enable 0
+    write /sys/devices/soc/1da4000.ufshc/hibern8_on_idle_enable 0
+    write /sys/module/lpm_levels/parameters/sleep_disabled Y
+
+    # Goodix fingerprint
+    chown system system /dev/goodix_fp
+
+    # Set up schedtune
+    write /dev/stune/foreground/schedtune.prefer_idle 1
+    write /dev/stune/top-app/schedtune.boost 10
+    write /dev/stune/top-app/schedtune.prefer_idle 1
+
+    # disable thermal hotplug for configuration
+    write /sys/module/msm_thermal/core_control/enabled 0
+
+    # bring CPUs online
+    write /sys/devices/system/cpu/cpu0/online 1
+    write /sys/devices/system/cpu/cpu1/online 1
+    write /sys/devices/system/cpu/cpu2/online 1
+    write /sys/devices/system/cpu/cpu3/online 1
+    write /sys/devices/system/cpu/cpu4/online 1
+    write /sys/devices/system/cpu/cpu5/online 1
+    write /sys/devices/system/cpu/cpu6/online 1
+    write /sys/devices/system/cpu/cpu7/online 1
+
+    # configure governor settings for little cluster
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "schedutil"
+    write /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us 500
+    write /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us 20000
+
+    # configure governor settings for big cluster
+    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor "schedutil"
+    write /sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us 500
+    write /sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us 20000
+
+    # enable thermal hotplug
+    write /sys/module/msm_thermal/core_control/enabled 1
+
+    # disable retention
+    write /sys/module/lpm_levels/system/pwr/cpu0/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/pwr/cpu1/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/pwr/cpu2/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/pwr/cpu3/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/cpu4/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/cpu5/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/cpu6/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/cpu7/ret/idle_enabled N
+    write /sys/module/lpm_levels/system/pwr/pwr-l2-dynret/idle_enabled N
+    write /sys/module/lpm_levels/system/pwr/pwr-l2-ret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/perf-l2-dynret/idle_enabled N
+    write /sys/module/lpm_levels/system/perf/perf-l2-ret/idle_enabled N
+    write /sys/module/lpm_levels/parameters/sleep_disabled N
+
+    # ZRAM setup
+    write /sys/block/zram0/comp_algorithm lz4
+    write /proc/sys/vm/page-cluster 0
+
+    start qcom-power
+
+on post-fs-data
+    mkdir /data/vendor/hbtp 0750 system system
+    mkdir /persist/qti_fp 0700 system system
+    mkdir /data/misc/seemp 0700 system system
+    mkdir /data/misc/fpc 0770 system system
+    mkdir /data/misc/goodix 0770 system system
+    mkdir /persist/fpc 0770 system system
+
+on late-fs
+    # Enable boot time fs tuning (ro like system is on sda, rw like userdata is on sde)
+    write /sys/block/sda/queue/iostats 0
+    write /sys/block/sda/queue/nr_requests 256
+    write /sys/block/sda/queue/read_ahead_kb 2048
+    write /sys/block/sde/queue/iostats 0
+    write /sys/block/sde/queue/nr_requests 256
+    write /sys/block/sda/queue/read_ahead_kb 2048
+
+on property:sys.boot_completed=1
+    # online little cluster
+    write /sys/devices/system/cpu/cpu0/online 1
+    # configure min freq
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 518400
+
+    # online big cluster
+    write /sys/devices/system/cpu/cpu4/online 1
+    # configure min freq
+    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq 518400
+
+    # Disable boot time fs tuning
+    write /sys/block/sda/queue/iostats 1
+    write /sys/block/sda/queue/nr_requests 128
+    write /sys/block/sda/queue/read_ahead_kb 1024
+    write /sys/block/sde/queue/iostats 1
+    write /sys/block/sde/queue/nr_requests 128
+    write /sys/block/sde/queue/read_ahead_kb 1024
+
+    # Enable UFS powersaving
+    write /sys/devices/soc/1da4000.ufshc/clkscale_enable 1
+    write /sys/devices/soc/1da4000.ufshc/clkgate_enable 1
+    write /sys/devices/soc/1da4000.ufshc/hibern8_on_idle_enable 1
+    write /sys/module/lpm_levels/parameters/sleep_disabled N
+
+on boot
+   # in FBE mode, /data is here
+   write /sys/block/sdb/queue/read_ahead_kb 512
+
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/irq
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/irq_enable
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/wakeup_enable
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/hw_reset
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/device_prepare
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/fingerdown_wait
+   chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/vendor
+   chown system system /data/misc/fpc/calibration_image.pndat
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/irq
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/irq_enable
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/wakeup_enable
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/hw_reset
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/device_prepare
+   chmod 0700 /sys/bus/platform/devices/soc:fingerprint_fpc/vendor
+   chmod 0600 /data/misc/fpc/calibration_image.pndat
+
+    # Goodix /sys
+    chmod 0600 /sys/devices/soc/soc:fingerprint_goodix/proximity_state
+    chown system system /sys/devices/soc/soc:fingerprint_goodix/proximity_state
+
+    # RGB lights
+    chown system system /sys/class/leds/white/brightness
+    chown system system /sys/class/leds/white/pause_lo
+    chown system system /sys/class/leds/white/pause_hi
+    chown system system /sys/class/leds/white/blink
+    chown system system /sys/class/leds/white/ramp_step_ms
+    chown system system /sys/class/leds/white/duty_pcts
+    chown system system /sys/class/leds/white/start_idx
+
+    chmod 660 /sys/class/leds/white/brightness
+    chmod 660 /sys/class/leds/white/ramp_step_ms
+    chmod 660 /sys/class/leds/white/duty_pcts
+    chmod 660 /sys/class/leds/white/start_idx
+
+    # LED torch permissions
+    chmod 0666 /sys/class/leds/led:torch_0/brightness
+    chmod 0666 /sys/class/leds/led:torch_1/brightness
+    chmod 0666 /sys/class/leds/led:switch_0/brightness
+    chmod 0666 /sys/class/leds/led:switch_1/brightness
+
+    # Button backlight permissions
+    chown system system /sys/class/leds/button-backlight1/brightness
+
+    # KeyDisabler permissions
+    chown system system /proc/touchpanel/capacitive_keys_enable
+    chown system system /sys/module/gf_spi/parameters/report_home_events
+    chown system system /sys/devices/soc/soc:fingerprint_fpc/enable_key_events
+    chmod 0660 /proc/touchpanel/capacitive_keys_enable
+    chmod 0660 /sys/module/gf_spi/parameters/report_home_events
+    chmod 0660 /sys/devices/soc/soc:fingerprint_fpc/enable_key_events
+
+    chown system system /proc/touchpanel
+    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/0dbutton
+    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/wake_gesture
+    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/reversed_keys_enable
+    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/0dbutton
+    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/wake_gesture
+    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/reversed_keys_enable
+    chown system system /proc/touchpanel/double_tap_enable
+    chmod 0660 /proc/touchpanel/double_tap_enable
+
+on property:ro.boot.fingerprint=fpc
+    setprop ro.hardware.fingerprint fpc
+
+on property:ro.boot.fingerprint=goodix
+    setprop ro.hardware.fingerprint goodix
+
+service readmac /vendor/bin/readmac
+    class main
+    user root
+    group root oem_2901
+    oneshot

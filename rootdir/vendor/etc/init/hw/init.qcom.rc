@@ -25,9 +25,10 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-import vendor/etc/init/hw/init.qcom.usb.rc
-import vendor/etc/init/hw/init.msm.usb.configfs.rc
-import vendor/etc/init/hw/init.target.rc
+import /vendor/etc/init/hw/init.target.rc
+import /vendor/etc/init/hw/init.sagit.rc
+import /vendor/etc/init/hw/init.sagit.usb.rc
+import /vendor/etc/init/hw/init.qcom.factory.rc
 
 on early-init
     mount debugfs debugfs /sys/kernel/debug
@@ -53,21 +54,6 @@ on init
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing
 
-on late-fs
-    # boot time fs tune
-    write /sys/block/sda/queue/iostats 0
-    write /sys/block/sda/queue/scheduler cfq
-    write /sys/block/sda/queue/iosched/slice_idle 0
-    write /sys/block/sda/queue/read_ahead_kb 2048
-    write /sys/block/sda/queue/nr_requests 256
-    write /sys/block/sde/queue/iostats 0
-    write /sys/block/sde/queue/scheduler cfq
-    write /sys/block/sde/queue/iosched/slice_idle 0
-    write /sys/block/sde/queue/read_ahead_kb 2048
-    write /sys/block/sde/queue/nr_requests 256
-    write /sys/block/dm-0/queue/read_ahead_kb 2048
-    write /sys/block/dm-1/queue/read_ahead_kb 2048
-
 on early-boot
     # set RLIMIT_MEMLOCK to 64MB
     setrlimit 8 67108864 67108864
@@ -76,8 +62,19 @@ on early-boot
     write /sys/kernel/boot_cdsp/boot 1
     write /sys/kernel/boot_slpi/boot 1
     exec u:r:qti_init_shell:s0 -- /vendor/bin/init.qcom.early_boot.sh
+    chown root audio /sys/kernel/boot_adsp/boot
 
 on boot
+    # For tracing support in hub.
+    chown system shell /sys/kernel/debug/tracing/trace
+    chown system shell /sys/kernel/debug/tracing/buffer_size_kb
+    chown system shell /sys/kernel/debug/tracing/tracing_on
+    chown system shell /sys/kernel/debug/tracing/trace_clock
+    chown system shell /sys/kernel/debug/tracing/options/overwrite
+    chown system shell /sys/kernel/debug/tracing/events/cpufreq_interactive/enable
+    chown system shell /sys/kernel/debug/tracing/events/binder/binder_transaction/enable
+    chown system shell /sys/kernel/debug/tracing/events/binder/binder_transaction_received/enable
+
     chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/type
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/state
@@ -130,43 +127,6 @@ on boot
     #Create NETMGR daemon socket area
     mkdir /dev/socket/netmgr 0750 radio radio
 
-    # RGB lights
-    chown system system /sys/class/leds/white/brightness
-    chown system system /sys/class/leds/white/pause_lo
-    chown system system /sys/class/leds/white/pause_hi
-    chown system system /sys/class/leds/white/blink
-    chown system system /sys/class/leds/white/ramp_step_ms
-    chown system system /sys/class/leds/white/duty_pcts
-    chown system system /sys/class/leds/white/start_idx
-
-    chmod 660 /sys/class/leds/white/brightness
-    chmod 660 /sys/class/leds/white/ramp_step_ms
-    chmod 660 /sys/class/leds/white/duty_pcts
-    chmod 660 /sys/class/leds/white/start_idx
-
-    # LED torch permissions
-    chmod 0666 /sys/class/leds/led:torch_0/brightness
-    chmod 0666 /sys/class/leds/led:torch_1/brightness
-    chmod 0666 /sys/class/leds/led:switch_0/brightness
-    chmod 0666 /sys/class/leds/led:switch_1/brightness
-
-    # Button backlight permissions
-    chown system system /sys/class/leds/button-backlight1/brightness
-
-    # KeyDisabler permissions
-    chown system system /sys/module/gf_spi/parameters/report_home_events
-    chown system system /sys/devices/soc/soc:fingerprint_fpc/enable_key_events
-    chmod 0660 /sys/module/gf_spi/parameters/report_home_events
-    chmod 0660 /sys/devices/soc/soc:fingerprint_fpc/enable_key_events
-
-    chown system system /proc/touchpanel
-    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/0dbutton
-    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/wake_gesture
-    chown system system /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/reversed_keys_enable
-    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/0dbutton
-    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/wake_gesture
-    chmod 0660 /sys/devices/soc/c179000.i2c/i2c-5/5-0020/input/input1/reversed_keys_enable
-
     setprop wifi.interface wlan0
 
 #   Define TCP buffer sizes for various networks
@@ -202,8 +162,11 @@ on boot
 
 #   Assign TCP buffer thresholds to be ceiling value of technology maximums
 #   Increased technology maximums should be reflected here.
-    write /proc/sys/net/core/rmem_max  8388608
-    write /proc/sys/net/core/wmem_max  8388608
+    write /proc/sys/net/core/rmem_max  16777216
+    write /proc/sys/net/core/wmem_max  16777216
+
+#   Assign UDP default read buffer to get expected UDP data throughput
+    write /proc/sys/net/ipv4/udp_rmem_min 10240
 
     # To prevent out of order acknowledgements from making
     # connection tracking to treat them as not belonging to
@@ -215,7 +178,7 @@ on boot
 
     # Set the console loglevel to < KERN_INFO
     # Set the default message loglevel to KERN_INFO
-    write /proc/sys/kernel/printk "7 4 1 7"
+    write /proc/sys/kernel/printk "6 6 1 7"
 
     # Allow access for CCID command/response timeout configuration
     chown system system /sys/module/ccid_bridge/parameters/bulk_msg_timeout
@@ -233,8 +196,8 @@ on boot
     chown root system /sys/kernel/dload/dload_mode
     chmod 0660 /sys/kernel/dload/dload_mode
 
-    chown system system /sys/class/backlight/panel0-backlight/brightness
-    chown system system /sys/class/backlight/panel0-backlight/max_brightness
+    chown system system /sys/class/leds/lcd-backlight/brightness
+    chown system system /sys/class/leds/lcd-backlight/max_brightness
 
     # Allow access to sensors device attributes
     chown system system /sys/class/sensors/MPU6050-accel/enable
@@ -395,8 +358,6 @@ on post-fs-data
     mkdir /data/vendor/audio/acdbdata 0770 media audio
     mkdir /data/vendor/audio/acdbdata/delta 0770 media audio
 
-    setprop vold.post_fs_data_done 1
-
     # #Create a folder for SRS to be able to create a usercfg file
     # mkdir /data/data/media 0770 media media
 
@@ -404,14 +365,9 @@ on post-fs-data
     mkdir /data/misc/fm 0770 system system
     chmod 0770 /data/misc/fm
 
-    #Create PERFD deamon related dirs
-    mkdir /data/vendor/perfd 0770 root system
-    chmod 2770 /data/vendor/perfd
-    rm /data/vendor/perfd/default_values
-
-    # NFC local data and nfcee xml storage
-    mkdir /data/nfc 0770 nfc nfc
-    mkdir /data/nfc/param 0770 nfc nfc
+    # Create perfd related dirs
+    mkdir /data/system/perfd 0770 root system
+    chmod 2770 /data/system/perfd
 
     #Create IOP  deamon related dirs
     mkdir /data/vendor/iop 0770 root system
@@ -445,10 +401,6 @@ on post-fs-data
     mkdir /data/system/swap 0770 root system
     chmod 2770 /data/system/swap
 
-    # set aggressive read ahead for dm-0 and dm-1 during boot up
-    write /sys/block/dm-0/queue/read_ahead_kb 2048
-    write /sys/block/dm-1/queue/read_ahead_kb 2048
-
     #add torch node for cit
     chown system system /sys/class/leds/led:torch_0/brightness
     chown system system /sys/class/leds/led:torch_1/brightness
@@ -459,6 +411,8 @@ on post-fs-data
 
     #Create FTM_AP dir for factory test
     mkdir /data/FTM_AP 0775 system system
+
+    setprop vold.post_fs_data_done 1
 
 service nqnfcinfo /vendor/bin/nqnfcinfo
     class late_start
@@ -473,10 +427,10 @@ service iop /vendor/bin/iop
     disabled
     socket iop seqpacket 0666 root system
 
-service qcomsysd /vendor/bin/qcom-system-daemon
-    class main
-    user root
-    group root diag
+#service qcomsysd /vendor/bin/qcom-system-daemon
+#    class main
+#    user root
+#    group root diag
 
 service ssr_setup /vendor/bin/ssr_setup
     oneshot
@@ -513,18 +467,19 @@ on property:persist.sys.ssr.enable_ramdumps=0
 
 on property:sys.boot_completed=1
     write /dev/kmsg "Boot completed "
-    # end boot time fs tune
-    write /sys/block/sda/queue/read_ahead_kb 1024
-    write /sys/block/sda/queue/nr_requests 128
-    write /sys/block/sda/queue/iostats 1
-    write /sys/block/sde/queue/read_ahead_kb 512
-    write /sys/block/sde/queue/nr_requests 128
-    write /sys/block/sde/queue/iostats 1
-    write /sys/block/dm-0/queue/read_ahead_kb 512
-    write /sys/block/dm-1/queue/read_ahead_kb 512
     #WDSP FW boot sysfs node used by STHAL
     chown media audio /sys/kernel/wdsp0/boot
     chown media audio /sys/kernel/wcd_cpe0/fw_name
+
+    write /dev/cpuset/top-app/cpus 0-7
+    write /dev/cpuset/foreground/boost/cpus 0-3,6-7
+    write /dev/cpuset/foreground/cpus 0-3,6-7
+    write /dev/cpuset/background/cpus 0-1
+    write /dev/cpuset/system-background/cpus 0-3
+    write /dev/cpuset/camera-daemon/cpus 0-3
+
+    start qcom-post-boot
+
 on property:persist.radio.atfwd.start=false
     stop atfwd
 
@@ -566,10 +521,10 @@ on property:bluetooth.startbtlogger=true
 on property:bluetooth.startbtlogger=false
     stop bt_logger
 
-service qcom-c_core-sh  /vendor/bin/init.qcom.class_core.sh
-    class core
-    user root
-    oneshot
+#service qcom-c_core-sh  /vendor/bin/init.qcom.class_core.sh
+#    class core
+#    user root
+#    oneshot
 
 service qcom-c_main-sh /vendor/bin/init.class_main.sh
     class main
@@ -609,6 +564,7 @@ service rmt_storage /vendor/bin/rmt_storage
 service tftp_server /vendor/bin/tftp_server
    class core
    user root
+   group root system
 
 on property:wc_transport.start_hci=true
     start start_hci_filter
@@ -616,44 +572,23 @@ on property:wc_transport.start_hci=true
 on property:wc_transport.start_hci=false
     stop start_hci_filter
 
-
 on property:persist.download_mode=1
     write /sys/module/msm_poweroff/parameters/download_mode 1
 
 service start_hci_filter /vendor/bin/wcnss_filter
     class late_start
-    user bluetooth
-    group bluetooth diag system
-    seclabel u:r:wcnss_filter:s0
+    user root
+    group bluetooth diag system wakelock log
+    seclabel u:r:bluetooth:s0
     disabled
     writepid /dev/cpuset/system-background/tasks
 
-on property:wc_transport.start_root=true
-    start hci_filter_root
-
-on property:wc_transport.start_root=false
-    stop hci_filter_root
-
-service hci_filter_root /vendor/bin/wcnss_filter
-    class late_start
-    user bluetooth
-    group bluetooth diag system
-    seclabel u:r:wcnss_filter:s0
-    disabled
-
-service bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
-    class late_start
-    user bluetooth
-    group bluetooth net_bt_admin inet
-    disabled
-    oneshot
-
-service bt-sap /system/bin/sapd 15
-    user bluetooth
-    group bluetooth net_bt_admin
-    class late_start
-    disabled
-    oneshot
+#service bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
+#    class late_start
+#    user bluetooth
+#    group bluetooth net_bt_admin inet
+#    disabled
+#    oneshot
 
 service btsnoop /system/bin/btsnoop
    user bluetooth
@@ -676,29 +611,36 @@ service ftmd /vendor/bin/ftmdaemon
     disabled
     oneshot
 
+service perfd /vendor/bin/perfd
+   class main
+   user root
+   group root readproc system
+   socket perfd seqpacket 0666 root system
+   disabled
+
 service port-bridge /vendor/bin/port-bridge
     class main
     user radio system
     group radio system inet
     disabled
     oneshot
-    writepid /dev/cpuset/system-background/tasks
 
-service qmiproxy /system/bin/qmiproxy
-    class main
-    user radio
-    group radio diag
-    disabled
+#service qmiproxy /system/bin/qmiproxy
+#    class main
+#    user radio
+#    group radio diag
+#    disabled
 
 # QMUX must be in multiple groups to support external process connections
-service qmuxd /vendor/bin/qmuxd
-    class main
-    user root
-    group radio audio bluetooth gps nfc diag
-    disabled
+#service qmuxd /vendor/bin/qmuxd
+#    class main
+#    user root
+#    group radio audio bluetooth gps nfc diag
+#    disabled
 
 service netmgrd /vendor/bin/netmgrd
     class main
+    disabled
     writepid /dev/cpuset/system-background/tasks
 
 service ipacm-diag /vendor/bin/ipacm-diag
@@ -707,24 +649,26 @@ service ipacm-diag /vendor/bin/ipacm-diag
     socket ipacm_log_file dgram 660 radio radio
     group radio diag
     disabled
+    writepid /dev/cpuset/system-background/tasks
 
 service ipacm /vendor/bin/ipacm
     class main
     user radio
     group radio inet
     disabled
-    writepid /dev/cpuset/system-background/tasks
 
 service qti /vendor/bin/qti
     class main
     user radio
-    group radio net_raw diag usb net_admin
+    group radio oem_2901 diag usb net_admin
+    disabled
     writepid /dev/cpuset/system-background/tasks
 
 service sensors /vendor/bin/sensors.qcom
     class core
     user root
     group root
+    disabled
     writepid /dev/cpuset/system-background/tasks
 
 on property:ro.use_data_netmgrd=false
@@ -871,17 +815,17 @@ service iprenew_wigig0 /system/bin/dhcpcd -n
     disabled
     oneshot
 
-service ptt_socket_app /vendor/bin/ptt_socket_app -d
-    class main
-    user root
-    group root
-    oneshot
+#service ptt_socket_app /vendor/bin/ptt_socket_app -d
+#    class main
+#    user root
+#    group root
+#    oneshot
 
-service ptt_ffbm /vendor/bin/ptt_socket_app -f -d
-    user root
-    group root
-    disabled
-    oneshot
+#service ptt_ffbm /vendor/bin/ptt_socket_app -f -d
+#    user root
+#    group root
+#    disabled
+#    oneshot
 
 service wifi_ftmd /vendor/bin/wifi_ftmd
     user system
@@ -1002,6 +946,10 @@ on property:drmdiag.load=1
 on property:drmdiag.load=0
     stop drmdiag
 
+# qcom-power triggers this property
+on property:sys.post_boot.parsed=1
+    start perfd
+
 service qcom-sh /vendor/bin/init.qcom.sh
     class late_start
     user root
@@ -1012,9 +960,15 @@ service sensor-sh /vendor/bin/init.qcom.sensors.sh
     user root
     oneshot
 
-service crashdata-sh /vendor/bin/init.qcom.crashdata.sh
-    class late_start
+#service crashdata-sh /vendor/bin/init.qcom.crashdata.sh
+#    class late_start
+#    user root
+#    oneshot
+
+service qcom-power /vendor/bin/init.qcom.power.sh
+    class main
     user root
+    disabled
     oneshot
 
 service qcom-post-boot /vendor/bin/init.qcom.post_boot.sh
@@ -1035,23 +989,21 @@ service wifi-crda /vendor/bin/init.crda.sh
    disabled
    oneshot
 
-on property:sys.boot_completed=1
-    start qcom-post-boot
-
 on property:sys.miui.user_authenticated=true
     start cnss_diag
     start tcpdump
 
-service qvop-daemon /vendor/bin/qvop-daemon
-    class late_start
-    user system
-    group system drmrpc
-    writepid /dev/cpuset/system-background/tasks
+#service qvop-daemon /vendor/bin/qvop-daemon
+#    class late_start
+#    user system
+#    group system drmrpc
+#    writepid /dev/cpuset/system-background/tasks
 
 service atfwd /vendor/bin/ATFWD-daemon
     class late_start
     user system
     group system radio
+    writepid /dev/cpuset/system-background/tasks
 
 service hostapd_fst /vendor/bin/hostapd -dd -g /data/vendor/wifi/hostapd/global /data/misc/wifi/hostapd.conf
     class late_start
@@ -1077,7 +1029,7 @@ on property:persist.ims.regmanager.mode=1
 
 on property:ro.data.large_tcp_window_size=true
     # Adjust socket buffer to enlarge TCP receive window for high bandwidth (e.g. DO-RevB)
-    write /proc/sys/net/ipv4/tcp_adv_win_scale  2
+    write /proc/sys/net/ipv4/tcp_adv_win_scale 2
 
 service battery_monitor /system/bin/battery_monitor
     user system
@@ -1089,6 +1041,7 @@ service ril-daemon2 /vendor/bin/hw/rild -c 2
     socket rild2 stream 660 root radio
     socket rild-debug2 stream 660 radio system
     user radio
+    disabled
     group radio cache inet misc audio sdcard_r sdcard_rw diag oem_2901 log
     capabilities BLOCK_SUSPEND NET_ADMIN NET_RAW
 
@@ -1110,7 +1063,7 @@ service profiler_daemon /system/bin/profiler_daemon
 service charger /charger
     class charger
     group system graphics
-    seclabel u:r:charger:s0
+    seclabel u:r:healthd:s0
 
 service ssr_diag /vendor/bin/ssr_diag
     class late_start
@@ -1133,16 +1086,6 @@ service charger_monitor /system/bin/charger_monitor
     user root
     group root
     disabled
-
-service qbcharger /charger -m 1
-    disabled
-    oneshot
-
-on property:sys.qbcharger.enable=true
-    start qbcharger
-
-on property:sys.qbcharger.enable=false
-    stop qbcharger
 
 service diag_mdlog_start /vendor/bin/diag_mdlog -n 20
     class late_start
@@ -1211,10 +1154,10 @@ service qseeproxydaemon /vendor/bin/qseeproxydaemon
     user system
     group system
 
-service esepmdaemon /vendor/bin/esepmdaemon
-    class core
-    user system
-    group nfc
+#service esepmdaemon /vendor/bin/esepmdaemon
+#    class core
+#    user system
+#    group nfc
 
 on charger
     wait /dev/block/bootdevice/by-name/system
@@ -1274,3 +1217,6 @@ service power_off_alarm /vendor/bin/power_off_alarm
     group system
     disabled
     oneshot
+
+on property:dev.bootcomplete=1
+    setprop sys.io.scheduler "bfq"
