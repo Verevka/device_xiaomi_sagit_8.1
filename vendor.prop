@@ -202,3 +202,6 @@ wifi.interface=wlan0
 
 # Voice assistant
 ro.opa.eligible_device=true
+
+# OTG support
+persist.sys.oem.otg_support=true
