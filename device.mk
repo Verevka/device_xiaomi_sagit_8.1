@@ -448,4 +448,14 @@ PRODUCT_COPY_FILES += \
 
 # GApps
 GAPPS_VARIANT := pico
+GAPPS_FORCE_MMS_OVERRIDES := true
+GAPPS_FORCE_DIALER_OVERRIDES := true
+GAPPS_FORCE_WEBVIEW_OVERRIDES := true
+GAPPS_PRODUCT_PACKAGES += YouTube
+GAPPS_PRODUCT_PACKAGES += FaceLock
+GAPPS_PRODUCT_PACKAGES += Calendar
+GAPPS_PRODUCT_PACKAGES += Wallpapers
+GAPPS_PRODUCT_PACKAGES += PrebuiltNewsWeather
+GAPPS_PRODUCT_PACKAGES += Photos
+GAPPS_PRODUCT_PACKAGES += Velvet
 $(call inherit-product-if-exists, vendor/opengapps/build/opengapps-packages.mk)
