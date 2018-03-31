@@ -62,6 +62,8 @@ persist.camera.xm.green.b=0.96
 persist.camera.xm.green.r=0.97
 persist.dualcam.lpm.enable=1
 vendor.camera.aux.packagelist=org.codeaurora.snapcam,com.android.camera,com.miui.cit,org.cyanogenmod.snap
+vendor.camera.hal1.packagelist=com.skype.raider,com.google.android.talk,ru.sberbankmobile
+persist.camera.HAL3.enabled=1
 
 # FRP
 ro.frp.pst=/dev/block/bootdevice/by-name/frp
