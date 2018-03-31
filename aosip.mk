@@ -3,6 +3,9 @@ $(call inherit-product, device/xiaomi/sagit/full_sagit.mk)
 # Inherit some common aosip stuff.
 $(call inherit-product, vendor/aosip/config/common_full_phone.mk)
 
+PRODUCT_BUILD_PROP_OVERRIDES += \
+DEVICE_MAINTAINERS="Verevka-dev"
+
 PRODUCT_NAME := aosip_sagit
 PRODUCT_DEVICE := sagit
 PRODUCT_BRAND := Xiaomi
