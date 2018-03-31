@@ -198,6 +198,10 @@ PRODUCT_PACKAGES += \
     android.hardware.gatekeeper@1.0-impl \
     android.hardware.gatekeeper@1.0-service
 
+# Glove mode
+PRODUCT_PACKAGES += \
+    DeviceSettings
+
 # Google Lens
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/pixelstyle/etc/sysconfig/pixel_2017_exclusive.xml:system/etc/sysconfig/pixel_2017_exclusive.xml \
