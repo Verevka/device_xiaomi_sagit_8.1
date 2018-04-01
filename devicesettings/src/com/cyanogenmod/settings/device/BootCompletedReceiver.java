@@ -33,7 +33,6 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         if (DEBUG) Log.d(TAG, "Starting service");
         enableComponent(context, TouchscreenGestureSettings.class.getName());
         context.startService(new Intent(context, SensorsDozeService.class));
-        context.startService(new Intent(context, GloveModeService.class));
     }
 
     private void enableComponent(Context context, String component) {
