@@ -461,3 +461,7 @@ GAPPS_PRODUCT_PACKAGES += Velvet
 GAPPS_PRODUCT_PACKAGES += LatinImeGoogle
 GAPPS_PRODUCT_PACKAGES += PrebuiltDeskClockGoogle
 $(call inherit-product-if-exists, vendor/opengapps/build/opengapps-packages.mk)
+
+# Remove packages
+PRODUCT_PACKAGES += \
+    RemovePackages
