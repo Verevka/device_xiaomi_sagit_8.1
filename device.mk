@@ -458,4 +458,6 @@ GAPPS_PRODUCT_PACKAGES += Wallpapers
 GAPPS_PRODUCT_PACKAGES += PrebuiltNewsWeather
 GAPPS_PRODUCT_PACKAGES += Photos
 GAPPS_PRODUCT_PACKAGES += Velvet
+GAPPS_PRODUCT_PACKAGES += LatinImeGoogle
+GAPPS_PRODUCT_PACKAGES += PrebuiltDeskClockGoogle
 $(call inherit-product-if-exists, vendor/opengapps/build/opengapps-packages.mk)
